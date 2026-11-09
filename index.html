@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>방명록 · 슬기짜기</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --muted: #64748b;
+            --primary: #10b981;
+            --primary-hover: #059669;
+            --danger-bg: #fef2f2;
+            --danger-text: #dc2626;
+            --warn-bg: #fffbeb;
+            --warn-border: #fde68a;
+            --warn-text: #92400e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 40px 16px;
+        }
+
+        .container {
+            max-width: 560px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 24px;
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary-hover);
+            background: #d1fae5;
+            padding: 4px 10px;
+            border-radius: 999px;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .notice {
+            background: var(--warn-bg);
+            border: 1px solid var(--warn-border);
+            color: var(--warn-text);
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.15s ease;
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: var(--primary);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--primary);
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 700;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .list-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .refresh-btn {
+            width: auto;
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .refresh-btn:hover {
+            background: #f1f5f9;
+            color: var(--text);
+        }
+
+        .guestbook-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .entry {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .entry-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .entry-name {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text);
+        }
+
+        .entry-date {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .entry-message {
+            font-size: 14px;
+            color: #334155;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 36px 16px;
+            color: var(--muted);
+            font-size: 14px;
+            background: var(--card);
+            border: 1px dashed var(--border);
+            border-radius: 14px;
+        }
+
+        .error-box {
+            background: var(--danger-bg);
+            color: var(--danger-text);
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-top: 12px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <span class="badge">슬기짜기 10주차 · Database</span>
+            <h1>방명록</h1>
+            <p class="subtitle">Supabase DB에 연결되어 친구 폰에서도 같은 글이 보입니다.</p>
+        </header>
+
+        <div id="setupNotice" class="notice">
+            아직 Supabase <strong>URL</strong>과 <strong>Publishable key</strong>가 입력되지 않았습니다.
+            Supabase 프로젝트의 URL과 key를 채팅에 알려주시면 바로 연결해 드릴게요!
+        </div>
+
+        <div class="card">
+            <form id="guestbookForm">
+                <div class="form-group">
+                    <label for="nameInput">이름</label>
+                    <input id="nameInput" type="text" placeholder="예: 유찬" required maxlength="30" />
+                </div>
+                <div class="form-group">
+                    <label for="messageInput">메시지</label>
+                    <textarea id="messageInput" placeholder="첫 글 남겨요!" required maxlength="500"></textarea>
+                </div>
+                <button id="submitBtn" type="submit">글쓰기</button>
+                <div id="errorBox" class="error-box"></div>
+            </form>
+        </div>
+
+        <div class="list-header">
+            <span class="list-title">방명록 목록 <span id="countBadge"></span></span>
+            <button id="refreshBtn" class="refresh-btn" type="button">새로고침</button>
+        </div>
+
+        <div id="guestbookList" class="guestbook-list">
+            <div class="empty-state">방명록을 불러오는 중...</div>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================================
+        // [실습 ⑤~⑥] Supabase URL 과 Publishable key를 아래에 넣습니다.
+        // =========================================================================
+        const SUPABASE_URL = "https://dipkzitnwchkyvbafpke.supabase.co";
+        const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_dcHrERffsOHJBWD5CS6yHQ_h0L5ly8h";
+
+        const isConfigured =
+            SUPABASE_URL.startsWith("http") &&
+            SUPABASE_PUBLISHABLE_KEY &&
+            SUPABASE_PUBLISHABLE_KEY !== "YOUR_SUPABASE_PUBLISHABLE_KEY";
+
+        const setupNotice = document.getElementById("setupNotice");
+        const form = document.getElementById("guestbookForm");
+        const nameInput = document.getElementById("nameInput");
+        const messageInput = document.getElementById("messageInput");
+        const submitBtn = document.getElementById("submitBtn");
+        const errorBox = document.getElementById("errorBox");
+        const listEl = document.getElementById("guestbookList");
+        const countBadge = document.getElementById("countBadge");
+        const refreshBtn = document.getElementById("refreshBtn");
+
+        let supabaseClient = null;
+        if (isConfigured) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+        } else {
+            setupNotice.style.display = "block";
+        }
+
+        function showError(msg) {
+            errorBox.textContent = msg;
+            errorBox.style.display = msg ? "block" : "none";
+        }
+
+        function formatDate(isoString) {
+            if (!isoString) return "";
+            const d = new Date(isoString);
+            const month = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            const hours = String(d.getHours()).padStart(2, "0");
+            const mins = String(d.getMinutes()).padStart(2, "0");
+            return `${month}-${day} ${hours}:${mins}`;
+        }
+
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // 방명록 목록 불러오기 (최신순)
+        async function loadGuestbook() {
+            if (!supabaseClient) {
+                listEl.innerHTML = `<div class="empty-state">Supabase 연결 후 방명록 글이 여기에 표시됩니다.</div>`;
+                return;
+            }
+
+            const { data, error } = await supabaseClient
+                .from("guestbook")
+                .select("*")
+                .order("created_at", { ascending: false });
+
+            if (error) {
+                listEl.innerHTML = `<div class="empty-state">목록을 불러오지 못했습니다: ${escapeHtml(error.message)}</div>`;
+                return;
+            }
+
+            countBadge.textContent = `(${data.length})`;
+
+            if (!data || data.length === 0) {
+                listEl.innerHTML = `<div class="empty-state">아직 작성된 방명록이 없습니다. 첫 글을 남겨보세요!</div>`;
+                return;
+            }
+
+            listEl.innerHTML = data
+                .map(
+                    (row) => `
+          <div class="entry">
+            <div class="entry-top">
+              <span class="entry-name">${escapeHtml(row.name)}</span>
+              <span class="entry-date">${formatDate(row.created_at)}</span>
+            </div>
+            <div class="entry-message">${escapeHtml(row.message)}</div>
+          </div>
+        `
+                )
+                .join("");
+        }
+
+        // 방명록 새 글 저장하기!
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            showError("");
+
+            const name = nameInput.value.trim();
+            const message = messageInput.value.trim();
+            if (!name || !message) return;
+
+            if (!supabaseClient) {
+                showError("먼저 Supabase URL과 Publishable key를 설정해주세요.");
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "저장 중...";
+
+            const { error } = await supabaseClient
+                .from("guestbook")
+                .insert([{ name, message }]);
+
+            submitBtn.disabled = false;
+            submitBtn.textContent = "글쓰기";
+
+            if (error) {
+                showError("저장에 실패했습니다: " + error.message);
+                return;
+            }
+
+            messageInput.value = "";
+            await loadGuestbook();
+        });
+
+        refreshBtn.addEventListener("click", loadGuestbook);
+
+        loadGuestbook();
+    </script>
+</body>
+
+</html>
